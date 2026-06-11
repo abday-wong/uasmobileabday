@@ -39,7 +39,7 @@ type User struct {
 	FCMToken    string    `json:"fcm_token"`
 	TOTPSecret  string    `json:"-"`
 	TOTPEnabled bool      `gorm:"default:false" json:"totp_enabled"`
-	Balance     int64     `gorm:"default:100000" json:"balance"` // Saldo awal Rp100.000
+	Balance     int64     `gorm:"default:5000000" json:"balance"` // Saldo awal Rp5.000.000
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
 }
@@ -538,7 +538,7 @@ func confirmOTP(c *gin.Context) {
 		// Create new user with starting balance
 		user = User{
 			Email:   emailVerified,
-			Balance: 100000, // Rp100.000
+			Balance: 5000000, // Rp5.000.000
 		}
 		if err := db.Create(&user).Error; err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create user session"})
@@ -756,6 +756,29 @@ func transferPayment(c *gin.Context) {
 	var updatedSender User
 	db.First(&updatedSender, senderID)
 
+	// Send FCM push notifications to both sender and recipient
+	ctx := context.Background()
+
+	// Notify Recipient (Merchant / E-Commerce)
+	recipientNotifyMsg := fmt.Sprintf("Anda menerima pembayaran sebesar Rp %d dari %s", req.Amount, senderEmail.(string))
+	recipientStatus := sendFCMNotification(ctx, recipient.FCMToken, "Pembayaran Diterima", recipientNotifyMsg, map[string]string{
+		"type":            "payment_received",
+		"amount":          strconv.FormatInt(req.Amount, 10),
+		"sender_email":    senderEmail.(string),
+		"recipient_email": req.RecipientEmail,
+	})
+	log.Printf("FCM to Recipient (%s): %s", req.RecipientEmail, recipientStatus)
+
+	// Notify Sender (Wallet / Customer)
+	senderNotifyMsg := fmt.Sprintf("Pembayaran sebesar Rp %d ke %s berhasil", req.Amount, req.RecipientEmail)
+	senderStatus := sendFCMNotification(ctx, sender.FCMToken, "Transaksi Berhasil", senderNotifyMsg, map[string]string{
+		"type":            "payment_sent",
+		"amount":          strconv.FormatInt(req.Amount, 10),
+		"sender_email":    senderEmail.(string),
+		"recipient_email": req.RecipientEmail,
+	})
+	log.Printf("FCM to Sender (%s): %s", senderEmail.(string), senderStatus)
+
 	c.JSON(http.StatusOK, gin.H{
 		"message":         "Transfer completed successfully!",
 		"amount":          req.Amount,
@@ -793,4 +816,30 @@ func printBanner() {
 =============================================================
 `
 	fmt.Print(banner)
+}
+
+func sendFCMNotification(ctx context.Context, token string, title string, body string, data map[string]string) string {
+	if firebaseApp == nil {
+		return "Firebase app not initialized (Running in Mock mode)"
+	}
+	if token == "" {
+		return "FCM Token is empty for user"
+	}
+	msgClient, err := firebaseApp.Messaging(ctx)
+	if err != nil {
+		return fmt.Sprintf("Failed to get FCM client: %v", err)
+	}
+	message := &messaging.Message{
+		Token: token,
+		Notification: &messaging.Notification{
+			Title: title,
+			Body:  body,
+		},
+		Data: data,
+	}
+	_, err = msgClient.Send(ctx, message)
+	if err != nil {
+		return fmt.Sprintf("Failed to send FCM message: %v", err)
+	}
+	return "Sent successfully via FCM"
 }
