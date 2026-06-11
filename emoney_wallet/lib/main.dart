@@ -7,6 +7,7 @@ import 'dart:convert';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 // Background messaging handler
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -213,7 +214,7 @@ class WalletMainScreen extends StatefulWidget {
 class _WalletMainScreenState extends State<WalletMainScreen> {
   // Config: Adjust this based on where your backend is running.
   // 10.0.2.2 is the alias to host loopback interface in Android Emulator.
-  final String _backendUrl = 'http://10.0.2.2:8081/v1';
+  final String _backendUrl = kIsWeb ? 'http://localhost:8081/v1' : 'http://10.0.2.2:8081/v1';
 
   String? _jwtToken;
   String? _userEmail;
@@ -268,7 +269,12 @@ class _WalletMainScreenState extends State<WalletMainScreen> {
 
   void _handleIncomingDeepLink(Uri uri) {
     debugPrint('Received Deep Link: $uri');
-    if (uri.scheme == 'emoney' && uri.host == 'pay') {
+    bool isPaymentLink = (uri.scheme == 'emoney' && uri.host == 'pay');
+    if (kIsWeb && uri.queryParameters.containsKey('amount') && uri.queryParameters.containsKey('recipient')) {
+      isPaymentLink = true;
+    }
+
+    if (isPaymentLink) {
       final amount = uri.queryParameters['amount'];
       final recipient = uri.queryParameters['recipient'];
       final trxId = uri.queryParameters['trx_id'];
@@ -781,9 +787,14 @@ class _WalletMainScreenState extends State<WalletMainScreen> {
     _fetchUserProfile();
 
     debugPrint('Launching Callback Link: $callbackUri');
-    if (await canLaunchUrl(callbackUri)) {
-      await launchUrl(callbackUri, mode: LaunchMode.externalApplication);
-    } else {
+    try {
+      if (kIsWeb || await canLaunchUrl(callbackUri)) {
+        await launchUrl(callbackUri, mode: LaunchMode.platformDefault);
+      } else {
+        _showCallbackErrorDialog(callbackUri);
+      }
+    } catch (e) {
+      debugPrint('Error launching callback: $e');
       _showCallbackErrorDialog(callbackUri);
     }
   }
@@ -806,9 +817,14 @@ class _WalletMainScreenState extends State<WalletMainScreen> {
     });
 
     debugPrint('Launching Failure Callback Link: $callbackUri');
-    if (await canLaunchUrl(callbackUri)) {
-      await launchUrl(callbackUri, mode: LaunchMode.externalApplication);
-    } else {
+    try {
+      if (kIsWeb || await canLaunchUrl(callbackUri)) {
+        await launchUrl(callbackUri, mode: LaunchMode.platformDefault);
+      } else {
+        _showCallbackErrorDialog(callbackUri);
+      }
+    } catch (e) {
+      debugPrint('Error launching failure callback: $e');
       _showCallbackErrorDialog(callbackUri);
     }
   }
