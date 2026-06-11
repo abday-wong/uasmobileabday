@@ -213,7 +213,7 @@ class WalletMainScreen extends StatefulWidget {
 class _WalletMainScreenState extends State<WalletMainScreen> {
   // Config: Adjust this based on where your backend is running.
   // 10.0.2.2 is the alias to host loopback interface in Android Emulator.
-  final String _backendUrl = 'http://10.0.2.2:8080/v1';
+  final String _backendUrl = 'http://10.0.2.2:8081/v1';
 
   String? _jwtToken;
   String? _userEmail;
@@ -486,7 +486,7 @@ class _WalletMainScreenState extends State<WalletMainScreen> {
             side: const BorderSide(color: Colors.black, width: 3),
           ),
           backgroundColor: Colors.white,
-          title: const Text('2FA CONFIGURATION', style: TextStyle(fontWeight: FontWeight.extrabold, color: Colors.black)),
+          title: const Text('2FA CONFIGURATION', style: TextStyle(fontWeight: FontWeight.w800, color: Colors.black)),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -497,7 +497,9 @@ class _WalletMainScreenState extends State<WalletMainScreen> {
                 ),
                 const SizedBox(height: 12),
                 Container(
-                  decoration: Border.all(color: Colors.black, width: 2),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.black, width: 2),
+                  ),
                   padding: const EdgeInsets.all(8),
                   child: QrImageView(
                     data: qrUrl,
@@ -509,12 +511,14 @@ class _WalletMainScreenState extends State<WalletMainScreen> {
                 const Text('Secret Key:', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black)),
                 const SizedBox(height: 4),
                 Container(
-                  color: const Color(0xFFFFDE59),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFDE59),
+                    border: Border.all(color: Colors.black, width: 2),
+                  ),
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  border: Border.all(color: Colors.black, width: 2),
                   child: SelectableText(
                     secret,
-                    style: const TextStyle(fontWeight: FontWeight.extrabold, fontSize: 14, color: Colors.black),
+                    style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: Colors.black),
                   ),
                 ),
                 const Divider(height: 32, color: Colors.black, thickness: 2),
@@ -603,12 +607,14 @@ class _WalletMainScreenState extends State<WalletMainScreen> {
             side: BorderSide(color: Colors.black, width: 3),
           ),
           title: Container(
-            color: const Color(0xFFFFDE59),
+            decoration: const BoxDecoration(
+              color: Color(0xFFFFDE59),
+              border: Border(bottom: BorderSide(color: Colors.black, width: 3)),
+            ),
             padding: const EdgeInsets.all(8),
-            border: const Border(bottom: BorderSide(color: Colors.black, width: 3)),
             child: const Text(
               'TRANSACTION_AUTHORIZATION',
-              style: TextStyle(fontWeight: FontWeight.extrabold, color: Colors.black, fontSize: 16),
+              style: TextStyle(fontWeight: FontWeight.w800, color: Colors.black, fontSize: 16),
               textAlign: TextAlign.center,
             ),
           ),
@@ -617,24 +623,28 @@ class _WalletMainScreenState extends State<WalletMainScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Text('RECIPIENT:', style: TextStyle(fontWeight: FontWeight.extrabold, color: Colors.black, fontSize: 12)),
+              const Text('RECIPIENT:', style: TextStyle(fontWeight: FontWeight.w800, color: Colors.black, fontSize: 12)),
               const SizedBox(height: 2),
               Container(
                 padding: const EdgeInsets.all(8),
-                color: Colors.grey[200],
-                border: Border.all(color: Colors.black, width: 2),
+                decoration: BoxDecoration(
+                  color: Colors.grey[200],
+                  border: Border.all(color: Colors.black, width: 2),
+                ),
                 child: Text(recipient, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.black)),
               ),
               const SizedBox(height: 12),
-              const Text('TOTAL DEBIT:', style: TextStyle(fontWeight: FontWeight.extrabold, color: Colors.black, fontSize: 12)),
+              const Text('TOTAL DEBIT:', style: TextStyle(fontWeight: FontWeight.w800, color: Colors.black, fontSize: 12)),
               const SizedBox(height: 2),
               Container(
                 padding: const EdgeInsets.all(8),
-                color: const Color(0xFFFFDE59),
-                border: Border.all(color: Colors.black, width: 2),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFDE59),
+                  border: Border.all(color: Colors.black, width: 2),
+                ),
                 child: Text(
                   'Rp ${currencyFormat(amount)}',
-                  style: const TextStyle(fontWeight: FontWeight.extrabold, fontSize: 22, color: Colors.black),
+                  style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 22, color: Colors.black),
                 ),
               ),
               const SizedBox(height: 12),
@@ -642,7 +652,7 @@ class _WalletMainScreenState extends State<WalletMainScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   const Text('Current Balance:', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black, fontSize: 12)),
-                  Text('Rp ${currencyFormat(_balance)}', style: const TextStyle(fontWeight: FontWeight.extrabold, fontSize: 12, color: Colors.black)),
+                  Text('Rp ${currencyFormat(_balance)}', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12, color: Colors.black)),
                 ],
               ),
               const Divider(height: 24, color: Colors.black, thickness: 2),
@@ -707,7 +717,7 @@ class _WalletMainScreenState extends State<WalletMainScreen> {
                 Navigator.of(context).pop();
                 _cancelTransaction(errorMsg: 'Payment declined by user.');
               },
-              child: const Text('DECLINE', style: TextStyle(color: Colors.red, fontWeight: FontWeight.extrabold)),
+              child: const Text('DECLINE', style: TextStyle(color: Colors.red, fontWeight: FontWeight.w800)),
             ),
             ElevatedButton(
               onPressed: () async {
@@ -817,8 +827,10 @@ class _WalletMainScreenState extends State<WalletMainScreen> {
             const SizedBox(height: 8),
             Container(
               padding: const EdgeInsets.all(8),
-              color: Colors.grey[100],
-              border: Border.all(color: Colors.black, width: 2),
+              decoration: BoxDecoration(
+                color: Colors.grey[100],
+                border: Border.all(color: Colors.black, width: 2),
+              ),
               child: SelectableText(uri.toString(), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
             ),
           ],
@@ -855,7 +867,7 @@ class _WalletMainScreenState extends State<WalletMainScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('WALLET_SYSTEM', style: TextStyle(color: Colors.black, fontWeight: FontWeight.extrabold, fontFamily: 'Courier New')),
+        title: const Text('WALLET_SYSTEM', style: TextStyle(color: Colors.black, fontWeight: FontWeight.w800, fontFamily: 'Courier New')),
         backgroundColor: const Color(0xFFFFDE59),
         elevation: 0,
         shape: const Border(bottom: BorderSide(color: Colors.black, width: 4)),
@@ -903,13 +915,13 @@ class _WalletMainScreenState extends State<WalletMainScreen> {
           const SizedBox(height: 16),
           const Text(
             'SECURE_WALLET_ACCESS',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.extrabold, color: Colors.black),
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Colors.black),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 8),
           const Text(
             'Verify account identity using multi-factor credentials.',
-            style: TextStyle(color: Colors.black55, fontSize: 12, fontWeight: FontWeight.bold),
+            style: TextStyle(color: Colors.black54, fontSize: 12, fontWeight: FontWeight.bold),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 24),
@@ -934,7 +946,7 @@ class _WalletMainScreenState extends State<WalletMainScreen> {
             onPressed: _otpSent ? _confirmOTP : _requestEmailOTP,
             child: Text(
               _otpSent ? 'CONFIRM AUTHENTICATION' : 'REQUEST OTP CODE',
-              style: const TextStyle(fontWeight: FontWeight.extrabold, fontSize: 14, color: Colors.black),
+              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: Colors.black),
             ),
           ),
           if (_otpSent) ...[
@@ -968,7 +980,7 @@ class _WalletMainScreenState extends State<WalletMainScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text('WALLET BALANCE', style: TextStyle(color: Colors.black, fontWeight: FontWeight.extrabold, fontSize: 13)),
+                  const Text('WALLET BALANCE', style: TextStyle(color: Colors.black, fontWeight: FontWeight.w800, fontSize: 13)),
                   IconButton(
                     icon: const Icon(Icons.refresh, color: Colors.black, size: 24),
                     onPressed: _fetchUserProfile,
@@ -978,7 +990,7 @@ class _WalletMainScreenState extends State<WalletMainScreen> {
               const SizedBox(height: 4),
               Text(
                 'Rp ${currencyFormat(_balance)}',
-                style: const TextStyle(color: Colors.black, fontSize: 28, fontWeight: FontWeight.extrabold, letterSpacing: 1),
+                style: const TextStyle(color: Colors.black, fontSize: 28, fontWeight: FontWeight.w800, letterSpacing: 1),
               ),
               const Divider(color: Colors.black, thickness: 1.5, height: 20),
               Text(
@@ -1003,7 +1015,7 @@ class _WalletMainScreenState extends State<WalletMainScreen> {
                     SizedBox(width: 8),
                     Text(
                       'PENDING TRANSACTION!',
-                      style: TextStyle(fontWeight: FontWeight.extrabold, color: Colors.black, fontSize: 14),
+                      style: TextStyle(fontWeight: FontWeight.w800, color: Colors.black, fontSize: 14),
                     ),
                   ],
                 ),
@@ -1045,7 +1057,7 @@ class _WalletMainScreenState extends State<WalletMainScreen> {
                 children: [
                   Icon(Icons.lock, color: Colors.black),
                   SizedBox(width: 8),
-                  Text('SECURITY_SETUP', style: TextStyle(fontWeight: FontWeight.extrabold, fontSize: 14)),
+                  Text('SECURITY_SETUP', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
                 ],
               ),
               const Divider(color: Colors.black, thickness: 1.5, height: 24),
@@ -1056,7 +1068,7 @@ class _WalletMainScreenState extends State<WalletMainScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('GOOGLE AUTHENTICATOR (2FA)', style: TextStyle(fontWeight: FontWeight.extrabold, fontSize: 13)),
+                        const Text('GOOGLE AUTHENTICATOR (2FA)', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13)),
                         const SizedBox(height: 4),
                         Text(
                           _totpEnabled ? 'STATUS: ENABLED' : 'STATUS: NOT ACTIVE (Email OTP Fallback)',
@@ -1082,7 +1094,7 @@ class _WalletMainScreenState extends State<WalletMainScreen> {
                     children: [
                       Icon(Icons.qr_code_scanner, color: Colors.black, size: 18),
                       SizedBox(width: 8),
-                      Text('REGISTER AUTHENTICATOR', style: TextStyle(fontWeight: FontWeight.extrabold, color: Colors.black, fontSize: 13)),
+                      Text('REGISTER AUTHENTICATOR', style: TextStyle(fontWeight: FontWeight.w800, color: Colors.black, fontSize: 13)),
                     ],
                   ),
                 ),
@@ -1098,4 +1110,5 @@ class _WalletMainScreenState extends State<WalletMainScreen> {
 
 
 // Neubrutalism UI applied successfully.
+
 
