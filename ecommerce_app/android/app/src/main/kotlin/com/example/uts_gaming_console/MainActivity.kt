@@ -1,4 +1,4 @@
-package com.globalinstitute.ecommerce_app
+package com.example.uts_gaming_console
 
 import io.flutter.embedding.android.FlutterActivity
 

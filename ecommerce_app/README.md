@@ -1,4 +1,4 @@
-# ecommerce_app
+# uts_gaming_console
 
 A new Flutter project.
 
