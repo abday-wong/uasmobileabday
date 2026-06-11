@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:uts_gaming_console/core/constants/app_colors.dart';
 import '../providers/cart_provider.dart';
 import 'payment_success_page.dart';
@@ -14,32 +15,92 @@ class CheckoutPage extends StatefulWidget {
 class _CheckoutPageState extends State<CheckoutPage> {
   bool _isProcessing = false;
   int _currentStep = 0;
+  String _selectedPaymentMethod = 'emoney'; // 'emoney' or 'simulation'
 
   void _processCheckout() async {
-    setState(() {
-      _isProcessing = true;
-    });
+    final cartProvider = context.read<CartProvider>();
+    final amount = cartProvider.totalPrice;
 
-    // Simulasi proses pembayaran
-    await Future.delayed(const Duration(seconds: 2));
-
-    if (mounted) {
+    if (_selectedPaymentMethod == 'emoney') {
       setState(() {
-        _isProcessing = false;
+        _isProcessing = true;
       });
 
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (context) => PaymentSuccessPage(
-            onSuccess: () {
-              // Clear cart setelah sukses
-              context.read<CartProvider>().clearCart();
-              Navigator.popUntil(context, (route) => route.isFirst);
-            },
-          ),
-        ),
+      // Generate unique transaction ID
+      final trxId = 'TX-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}';
+      const merchantEmail = 'recipient@example.com';
+      const callbackUrl = 'ecommerce://callback';
+      
+      final deepLinkUri = Uri.parse(
+        'emoney://pay?amount=$amount'
+        '&recipient=$merchantEmail'
+        '&trx_id=$trxId'
+        '&callback=${Uri.encodeComponent(callbackUrl)}'
       );
+
+      debugPrint('Launching E-Money Deep Link: $deepLinkUri');
+
+      try {
+        if (await canLaunchUrl(deepLinkUri)) {
+          await launchUrl(deepLinkUri, mode: LaunchMode.externalApplication);
+          setState(() {
+            _isProcessing = false;
+          });
+        } else {
+          setState(() {
+            _isProcessing = false;
+          });
+          if (mounted) {
+            showDialog(
+              context: context,
+              builder: (context) => AlertDialog(
+                title: const Text('E-Money Wallet Tidak Ditemukan'),
+                content: const Text(
+                  'Aplikasi E-Money Wallet belum terpasang di perangkat Anda. '
+                  'Silakan pasang aplikasi dompet digital untuk melanjutkan pembayaran.',
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text('Tutup'),
+                  ),
+                ],
+              ),
+            );
+          }
+        }
+      } catch (e) {
+        setState(() {
+          _isProcessing = false;
+        });
+        debugPrint('Error launching deep link: $e');
+      }
+    } else {
+      setState(() {
+        _isProcessing = true;
+      });
+
+      // Simulasi proses pembayaran
+      await Future.delayed(const Duration(seconds: 2));
+
+      if (mounted) {
+        setState(() {
+          _isProcessing = false;
+        });
+
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => PaymentSuccessPage(
+              onSuccess: () {
+                // Clear cart setelah sukses
+                context.read<CartProvider>().clearCart();
+                Navigator.popUntil(context, (route) => route.isFirst);
+              },
+            ),
+          ),
+        );
+      }
     }
   }
 
@@ -351,6 +412,72 @@ class _CheckoutPageState extends State<CheckoutPage> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
+                          // Payment Method Selector
+                          Container(
+                            margin: const EdgeInsets.only(bottom: 12),
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: AppColors.background,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: AppColors.border),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Padding(
+                                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  child: Text(
+                                    'Pilih Metode Pembayaran',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                      color: AppColors.textPrimary,
+                                    ),
+                                  ),
+                                ),
+                                RadioListTile<String>(
+                                  value: 'emoney',
+                                  groupValue: _selectedPaymentMethod,
+                                  activeColor: AppColors.primary,
+                                  contentPadding: EdgeInsets.zero,
+                                  title: const Text(
+                                    'E-Money (Wallet)',
+                                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                                  ),
+                                  subtitle: const Text(
+                                    'App-to-App payment integration',
+                                    style: TextStyle(fontSize: 11),
+                                  ),
+                                  secondary: const Icon(Icons.account_balance_wallet, color: AppColors.primary),
+                                  onChanged: (val) {
+                                    setState(() {
+                                      _selectedPaymentMethod = val!;
+                                    });
+                                  },
+                                ),
+                                RadioListTile<String>(
+                                  value: 'simulation',
+                                  groupValue: _selectedPaymentMethod,
+                                  activeColor: AppColors.primary,
+                                  contentPadding: EdgeInsets.zero,
+                                  title: const Text(
+                                    'Simulasi COD / COD',
+                                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                                  ),
+                                  subtitle: const Text(
+                                    'Simulasi checkout langsung',
+                                    style: TextStyle(fontSize: 11),
+                                  ),
+                                  secondary: const Icon(Icons.payment, color: AppColors.textSecondary),
+                                  onChanged: (val) {
+                                    setState(() {
+                                      _selectedPaymentMethod = val!;
+                                    });
+                                  },
+                                ),
+                              ],
+                            ),
+                          ),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [

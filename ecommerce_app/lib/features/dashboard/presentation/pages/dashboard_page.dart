@@ -51,6 +51,13 @@ class _DashboardPageState extends State<DashboardPage> {
         ),
         actions: [
           IconButton(
+            icon: const Icon(Icons.receipt_long_outlined),
+            tooltip: 'Riwayat Transaksi',
+            onPressed: () {
+              Navigator.pushNamed(context, '/transaction-history');
+            },
+          ),
+          IconButton(
             icon: const Icon(Icons.shopping_cart_outlined),
             tooltip: 'Keranjang',
             onPressed: () {
