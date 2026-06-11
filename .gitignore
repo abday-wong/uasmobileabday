@@ -1,0 +1,4 @@
+temp_staging/
+.idea/
+.vscode/
+*.log
