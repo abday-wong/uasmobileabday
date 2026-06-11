@@ -1,0 +1,561 @@
+{
+	"info": {
+		"_postman_id": "e81d7f6c-e5b1-4f1e-9ba4-e0b484556f8f",
+		"name": "E-Money 2FA Testing",
+		"description": "Koleksi API untuk pengujian Two-Factor Authentication (2FA) pada project E-Money.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Firebase Auth (External)",
+			"item": [
+				{
+					"name": "1. Firebase Register Email & Password",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"{{USER_EMAIL}}\",\n    \"password\": \"{{USER_PASSWORD}}\",\n    \"returnSecureToken\": true\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "https://identitytoolkit.googleapis.com/v1/accounts:signUp?key={{FIREBASE_API_KEY}}",
+							"protocol": "https",
+							"host": [
+								"identitytoolkit",
+								"googleapis",
+								"com"
+							],
+							"path": [
+								"v1",
+								"accounts:signUp"
+							],
+							"query": [
+								{
+									"key": "key",
+									"value": "{{FIREBASE_API_KEY}}"
+								}
+							]
+						},
+						"description": "Membuat user baru di Firebase Authentication menggunakan Email & Password."
+					},
+					"response": []
+				},
+				{
+					"name": "2. Firebase Login",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"if (jsonData.idToken) {",
+									"    pm.environment.set(\"FIREBASE_ID_TOKEN\", jsonData.idToken);",
+									"    console.log(\"Saved FIREBASE_ID_TOKEN to environment.\");",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"{{USER_EMAIL}}\",\n    \"password\": \"{{USER_PASSWORD}}\",\n    \"returnSecureToken\": true\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={{FIREBASE_API_KEY}}",
+							"protocol": "https",
+							"host": [
+								"identitytoolkit",
+								"googleapis",
+								"com"
+							],
+							"path": [
+								"v1",
+								"accounts:signInWithPassword"
+							],
+							"query": [
+								{
+									"key": "key",
+									"value": "{{FIREBASE_API_KEY}}"
+								}
+							]
+						},
+						"description": "Login ke Firebase untuk mendapatkan FIREBASE_ID_TOKEN."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Authentication (Backend)",
+			"item": [
+				{
+					"name": "GET /v1/auth/me",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{BACKEND_TOKEN}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BACKEND_BASE_URL}}/auth/me",
+							"host": [
+								"{{BACKEND_BASE_URL}}"
+							],
+							"path": [
+								"auth",
+								"me"
+							]
+						},
+						"description": "Mengambil data profil user yang sedang login menggunakan token JWT backend."
+					},
+					"response": []
+				},
+				{
+					"name": "PUT /v1/auth/fcm-token",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{BACKEND_TOKEN}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"fcm_token\": \"mock_device_fcm_token_998877\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BACKEND_BASE_URL}}/auth/fcm-token",
+							"host": [
+								"{{BACKEND_BASE_URL}}"
+							],
+							"path": [
+								"auth",
+								"fcm-token"
+							]
+						},
+						"description": "Mengupdate token FCM (Firebase Cloud Messaging) user ke database."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "OTP & 2FA Flow",
+			"item": [
+				{
+					"name": "POST /v1/otp/send-email",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"if (jsonData.otp) {",
+									"    pm.environment.set(\"LAST_OTP_CODE\", jsonData.otp);",
+									"    console.log(\"Saved OTP Code for testing: \" + jsonData.otp);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"{{USER_EMAIL}}\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BACKEND_BASE_URL}}/otp/send-email",
+							"host": [
+								"{{BACKEND_BASE_URL}}"
+							],
+							"path": [
+								"otp",
+								"send-email"
+							]
+						},
+						"description": "Mengirimkan kode OTP melalui Gmail SMTP ke alamat email."
+					},
+					"response": []
+				},
+				{
+					"name": "POST /v1/otp/send-firebase",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"if (jsonData.otp) {",
+									"    pm.environment.set(\"LAST_OTP_CODE\", jsonData.otp);",
+									"    console.log(\"Saved OTP Code for testing: \" + jsonData.otp);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"{{USER_EMAIL}}\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BACKEND_BASE_URL}}/otp/send-firebase",
+							"host": [
+								"{{BACKEND_BASE_URL}}"
+							],
+							"path": [
+								"otp",
+								"send-firebase"
+							]
+						},
+						"description": "Mengirimkan OTP melalui Firebase Cloud Messaging (FCM)."
+					},
+					"response": []
+				},
+				{
+					"name": "POST /v1/otp/confirm (Via OTP Code)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"if (jsonData.token) {",
+									"    pm.environment.set(\"BACKEND_TOKEN\", jsonData.token);",
+									"    console.log(\"Saved BACKEND_TOKEN to environment.\");",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"{{USER_EMAIL}}\",\n    \"otp\": \"{{LAST_OTP_CODE}}\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BACKEND_BASE_URL}}/otp/confirm",
+							"host": [
+								"{{BACKEND_BASE_URL}}"
+							],
+							"path": [
+								"otp",
+								"confirm"
+							]
+						},
+						"description": "Konfirmasi kode OTP (Email atau Firebase) untuk login dan mendapatkan JWT backend."
+					},
+					"response": []
+				},
+				{
+					"name": "POST /v1/otp/confirm (Via Firebase ID Token)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"if (jsonData.token) {",
+									"    pm.environment.set(\"BACKEND_TOKEN\", jsonData.token);",
+									"    console.log(\"Saved BACKEND_TOKEN to environment.\");",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"firebase_id_token\": \"{{FIREBASE_ID_TOKEN}}\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BACKEND_BASE_URL}}/otp/confirm",
+							"host": [
+								"{{BACKEND_BASE_URL}}"
+							],
+							"path": [
+								"otp",
+								"confirm"
+							]
+						},
+						"description": "Konfirmasi menggunakan Firebase ID Token yang didapatkan langsung setelah login Firebase."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Google Authenticator (TOTP)",
+			"item": [
+				{
+					"name": "POST /v1/otp/totp/register",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"if (jsonData.secret) {",
+									"    pm.environment.set(\"TOTP_SECRET\", jsonData.secret);",
+									"    console.log(\"Saved TOTP SECRET: \" + jsonData.secret);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{BACKEND_TOKEN}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{BACKEND_BASE_URL}}/otp/totp/register",
+							"host": [
+								"{{BACKEND_BASE_URL}}"
+							],
+							"path": [
+								"otp",
+								"totp",
+								"register"
+							]
+						},
+						"description": "Mendaftarkan TOTP 2FA. Mengembalikan Secret Key untuk Google Authenticator."
+					},
+					"response": []
+				},
+				{
+					"name": "POST /v1/otp/totp/verify",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{BACKEND_TOKEN}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"code\": \"123456\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BACKEND_BASE_URL}}/otp/totp/verify",
+							"host": [
+								"{{BACKEND_BASE_URL}}"
+							],
+							"path": [
+								"otp",
+								"totp",
+								"verify"
+							]
+						},
+						"description": "Kirimkan kode angka dari Google Authenticator untuk memverifikasi dan mengaktifkan 2FA TOTP di database."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Payment / Transactions",
+			"item": [
+				{
+					"name": "POST /v1/payment/transfer (Tanpa OTP/Belum Aktif 2FA)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{BACKEND_TOKEN}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"recipient_email\": \"recipient@example.com\",\n    \"amount\": 25000\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BACKEND_BASE_URL}}/payment/transfer",
+							"host": [
+								"{{BACKEND_BASE_URL}}"
+							],
+							"path": [
+								"payment",
+								"transfer"
+							]
+						},
+						"description": "Melakukan transfer uang digital. Jika TOTP 2FA belum aktif, ini akan langsung berhasil tanpa parameter OTP."
+					},
+					"response": []
+				},
+				{
+					"name": "POST /v1/payment/transfer (Dengan OTP Email)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{BACKEND_TOKEN}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"recipient_email\": \"recipient@example.com\",\n    \"amount\": 20000,\n    \"otp_type\": \"email\",\n    \"otp\": \"{{LAST_OTP_CODE}}\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BACKEND_BASE_URL}}/payment/transfer",
+							"host": [
+								"{{BACKEND_BASE_URL}}"
+							],
+							"path": [
+								"payment",
+								"transfer"
+							]
+						},
+						"description": "Melakukan transfer dengan verifikasi 2FA kode OTP Email."
+					},
+					"response": []
+				},
+				{
+					"name": "POST /v1/payment/transfer (Dengan TOTP Authenticator)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{BACKEND_TOKEN}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"recipient_email\": \"recipient@example.com\",\n    \"amount\": 15000,\n    \"otp_type\": \"totp\",\n    \"otp\": \"123456\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BACKEND_BASE_URL}}/payment/transfer",
+							"host": [
+								"{{BACKEND_BASE_URL}}"
+							],
+							"path": [
+								"payment",
+								"transfer"
+							]
+						},
+						"description": "Melakukan transfer dengan kode 6 angka yang tertera di aplikasi Google Authenticator (jika TOTP sudah aktif)."
+					},
+					"response": []
+				}
+			]
+		}
+	]
+}
