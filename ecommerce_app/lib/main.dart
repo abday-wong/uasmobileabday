@@ -1,101 +1,61 @@
 import 'dart:async';
-import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:app_links/app_links.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
-import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:uts_gaming_console/core/constants/app_strings.dart';
+import 'package:uts_gaming_console/core/routes/app_router.dart';
+import 'package:uts_gaming_console/core/services/secure_storage.dart';
+import 'package:uts_gaming_console/core/theme/app_theme.dart';
+import 'package:uts_gaming_console/features/auth/presentation/providers/auth_provider.dart';
+import 'package:uts_gaming_console/features/cart/presentation/providers/cart_provider.dart';
+import 'package:uts_gaming_console/features/cart/presentation/providers/checkout_provider.dart';
+import 'package:uts_gaming_console/features/dashboard/presentation/providers/product_provider.dart';
+import 'package:uts_gaming_console/features/dashboard/presentation/pages/transaction_history_page.dart';
+import 'firebase_options.dart';
 
-// Background messaging handler
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   debugPrint("Handling a background message: ${message.messageId}");
 }
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+  
   try {
-    await Firebase.initializeApp();
     FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
     await FirebaseMessaging.instance.requestPermission();
   } catch (e) {
-    debugPrint("Firebase initialization skipped (Mock Mode): $e");
+    debugPrint("FCM initialization skipped (Mock/Error): $e");
   }
-  runApp(const ECommerceApp());
+
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider(create: (_) => ProductProvider()),
+        ChangeNotifierProvider(create: (_) => CartProvider()),
+        ChangeNotifierProvider(create: (_) => CheckoutProvider()),
+      ],
+      child: const MyApp(),
+    ),
+  );
 }
 
-class ECommerceApp extends StatelessWidget {
-  const ECommerceApp({super.key});
+class MyApp extends StatefulWidget {
+  const MyApp({super.key});
+
+  static final navigatorKey = GlobalKey<NavigatorState>();
 
   @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Global Merchant',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal),
-        useMaterial3: true,
-      ),
-      home: const ProductListScreen(),
-    );
-  }
+  State<MyApp> createState() => _MyAppState();
 }
 
-class Product {
-  final String id;
-  final String name;
-  final String description;
-  final int price;
-  final String imageUrl;
-
-  Product({
-    required this.id,
-    required this.name,
-    required this.description,
-    required this.price,
-    required this.imageUrl,
-  });
-}
-
-class ProductListScreen extends StatefulWidget {
-  const ProductListScreen({super.key});
-
-  @override
-  State<ProductListScreen> createState() => _ProductListScreenState();
-}
-
-class _ProductListScreenState extends State<ProductListScreen> {
-  final List<Product> _products = [
-    Product(
-      id: 'P001',
-      name: 'Wireless Mechanical Keyboard',
-      description: 'RGB Backlit mechanical keyboard with tactile brown switches.',
-      price: 150000,
-      imageUrl: '⌨️',
-    ),
-    Product(
-      id: 'P002',
-      name: 'Ergonomic Gaming Mouse',
-      description: 'Ultra-lightweight mouse with high-precision 26k DPI sensor.',
-      price: 50000,
-      imageUrl: '🖱️',
-    ),
-    Product(
-      id: 'P003',
-      name: 'Noise Cancelling Headset',
-      description: 'Over-ear headphones with active noise cancellation and clear mic.',
-      price: 250000,
-      imageUrl: '🎧',
-    ),
-    Product(
-      id: 'P004',
-      name: '4K Ultra-Wide Monitor',
-      description: '34-inch curved monitor perfect for productivity and gaming.',
-      price: 1000000,
-      imageUrl: '🖥️',
-    ),
-  ];
-
-  final Map<String, int> _cart = {};
+class _MyAppState extends State<MyApp> {
   late final AppLinks _appLinks;
   StreamSubscription? _linkSubscription;
 
@@ -106,23 +66,6 @@ class _ProductListScreenState extends State<ProductListScreen> {
     _initFirebaseMessaging();
   }
 
-  void _initFirebaseMessaging() {
-    try {
-      FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-        debugPrint('Got an FCM message in the foreground!');
-        if (message.notification != null) {
-          _showPaymentResultDialog(
-            title: message.notification!.title ?? 'Transaction Alert',
-            message: message.notification!.body ?? '',
-            isSuccess: true,
-          );
-        }
-      });
-    } catch (e) {
-      debugPrint("FCM listener setup skipped: $e");
-    }
-  }
-
   @override
   void dispose() {
     _linkSubscription?.cancel();
@@ -131,8 +74,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
 
   void _initDeepLinking() {
     _appLinks = AppLinks();
-    
-    // Listen to incoming deep links (scheme: ecommerce://)
+
     _linkSubscription = _appLinks.uriLinkStream.listen((uri) {
       if (!mounted) return;
       _handleDeepLink(uri);
@@ -140,12 +82,48 @@ class _ProductListScreenState extends State<ProductListScreen> {
       debugPrint('Deep Link Error: $err');
     });
 
-    // Check initial link when app starts from cold boot
     _appLinks.getInitialLink().then((uri) {
       if (uri != null && mounted) {
         _handleDeepLink(uri);
       }
     });
+  }
+
+  void _initFirebaseMessaging() {
+    try {
+      FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+        debugPrint('Got an FCM message in the foreground!');
+        if (message.notification != null) {
+          final context = MyApp.navigatorKey.currentContext;
+          if (context != null) {
+            showDialog(
+              context: context,
+              builder: (ctx) => AlertDialog(
+                icon: const Icon(Icons.notifications_active, color: Colors.blue, size: 48),
+                title: Text(message.notification!.title ?? 'Notifikasi Transaksi'),
+                content: Text(message.notification!.body ?? ''),
+                actions: [
+                  TextButton(
+                    onPressed: () {
+                      Navigator.of(ctx).pop();
+                      // Refresh transactions list if page is open
+                      MyApp.navigatorKey.currentState?.pushNamed('/transaction-history');
+                    },
+                    child: const Text('Lihat Riwayat'),
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.of(ctx).pop(),
+                    child: const Text('Tutup'),
+                  ),
+                ],
+              ),
+            );
+          }
+        }
+      });
+    } catch (e) {
+      debugPrint("FCM listener setup skipped: $e");
+    }
   }
 
   void _handleDeepLink(Uri uri) {
@@ -154,355 +132,109 @@ class _ProductListScreenState extends State<ProductListScreen> {
       final status = uri.queryParameters['status'];
       final trxId = uri.queryParameters['trx_id'] ?? 'N/A';
       final amount = uri.queryParameters['amount'] ?? '0';
-      final recipient = uri.queryParameters['recipient_email'] ?? 'N/A';
+      final recipient = uri.queryParameters['recipient_email'] ?? 'recipient@example.com';
 
-      if (status == 'success') {
-        _showPaymentResultDialog(
-          title: 'Payment Successful',
-          message: 'Your payment of Rp ${currencyFormat(int.parse(amount))} to $recipient was processed successfully.\n\nTransaction ID: $trxId',
-          isSuccess: true,
-        );
-        setState(() {
-          _cart.clear(); // Clear cart on success
+      final context = MyApp.navigatorKey.currentContext;
+      if (context != null) {
+        // Save to local secure storage
+        final now = DateTime.now();
+        final dateStr = '${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year} ${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
+        
+        SecureStorage.saveTransaction({
+          'trx_id': trxId,
+          'amount': amount,
+          'recipient_email': recipient,
+          'status': status,
+          'date': dateStr,
         });
-      } else {
-        final errorMsg = uri.queryParameters['error'] ?? 'Transaction was cancelled by user.';
-        _showPaymentResultDialog(
-          title: 'Payment Failed',
-          message: 'Error: $errorMsg\n\nTransaction ID: $trxId',
-          isSuccess: false,
-        );
+
+        if (status == 'success') {
+          context.read<CartProvider>().clearCart();
+          showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (ctx) => AlertDialog(
+              icon: const Icon(Icons.check_circle, color: Colors.green, size: 60),
+              title: const Text('Pembayaran Berhasil'),
+              content: Text(
+                'Transaksi Anda dengan ID $trxId sebesar Rp $amount berhasil dibayar via E-Money.',
+                textAlign: TextAlign.center,
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(ctx).pop();
+                    MyApp.navigatorKey.currentState?.pushNamedAndRemoveUntil(AppRouter.dashboard, (route) => false);
+                  },
+                  child: const Text('OK'),
+                ),
+              ],
+            ),
+          );
+        } else {
+          final error = uri.queryParameters['error'] ?? 'Cancelled';
+          showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (ctx) => AlertDialog(
+              icon: const Icon(Icons.error, color: Colors.red, size: 60),
+              title: const Text('Pembayaran Gagal'),
+              content: Text('Error: $error\nID Transaksi: $trxId'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(),
+                  child: const Text('OK'),
+                ),
+              ],
+            ),
+          );
+        }
       }
     }
   }
 
-  void _showPaymentResultDialog({
-    required String title,
-    required String message,
-    required bool isSuccess,
-  }) {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        icon: Icon(
-          isSuccess ? Icons.check_circle : Icons.error,
-          color: isSuccess ? Colors.green : Colors.red,
-          size: 60,
-        ),
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-        content: Text(
-          message,
-          textAlign: TextAlign.center,
-          style: const TextStyle(fontSize: 15),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('OK', style: TextStyle(fontWeight: FontWeight.bold)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  String currencyFormat(int value) {
-    return value.toString().replaceAllMapped(
-          RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-          (Match m) => '${m[1]}.',
-        );
-  }
-
-  int get _cartTotal {
-    int total = 0;
-    _cart.forEach((productId, quantity) {
-      final prod = _products.firstWhere((p) => p.id == productId);
-      total += prod.price * quantity;
-    });
-    return total;
-  }
-
-  void _addToCart(Product product) {
-    setState(() {
-      _cart[product.id] = (_cart[product.id] ?? 0) + 1;
-    });
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('${product.name} added to cart'),
-        duration: const Duration(seconds: 1),
-        action: SnackBarAction(
-          label: 'UNDO',
-          onPressed: () {
-            setState(() {
-              if (_cart[product.id]! > 1) {
-                _cart[product.id] = _cart[product.id]! - 1;
-              } else {
-                _cart.remove(product.id);
-              }
-            });
-          },
-        ),
-      ),
-    );
-  }
-
-  void _openCheckoutSheet() {
-    if (_cart.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Your cart is empty!')),
-      );
-      return;
-    }
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) => Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const Text(
-              'Checkout Summary',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 16),
-            ..._cart.entries.map((entry) {
-              final prod = _products.firstWhere((p) => p.id == entry.key);
-              return Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4.0),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text('${prod.name} (x${entry.value})', style: const TextStyle(fontSize: 14)),
-                    Text('Rp ${currencyFormat(prod.price * entry.value)}', style: const TextStyle(fontWeight: FontWeight.bold)),
-                  ],
-                ),
-              );
-            }).toList(),
-            const Divider(height: 32),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text('Total Amount', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                Text(
-                  'Rp ${currencyFormat(_cartTotal)}',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Theme.of(context).primaryColor),
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton.icon(
-              onPressed: () {
-                Navigator.of(context).pop();
-                _triggerEMoneyPayment();
-              },
-              icon: const Icon(Icons.wallet, color: Colors.white),
-              label: const Text('Pay with E-Money (Wallet)', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.teal,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-            ),
-            const SizedBox(height: 12),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _triggerEMoneyPayment() async {
-    // 1. Generate unique transaction identifier
-    final trxId = 'TX-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}';
-    
-    // 2. Define payment request parameters
-    final amount = _cartTotal;
-    const merchantEmail = 'recipient@example.com'; // recipient seeded email in GORM backend
-    const callbackUrl = 'ecommerce://callback';
-    
-    // 3. Construct deep link scheme
-    // Scheme format: emoney://pay?amount=XXX&recipient=XXX&trx_id=XXX&callback=XXX
-    final deepLinkUri = Uri.parse(
-      'emoney://pay?amount=$amount'
-      '&recipient=$merchantEmail'
-      '&trx_id=$trxId'
-      '&callback=${Uri.encodeComponent(callbackUrl)}'
-    );
-
-    debugPrint('Launching E-Money Deep Link: $deepLinkUri');
-
-    // 4. Launch the deep link to E-Money Wallet application
-    if (await canLaunchUrl(deepLinkUri)) {
-      await launchUrl(deepLinkUri, mode: LaunchMode.externalApplication);
-    } else {
-      // Wallet app not installed or scheme unsupported
-      _showAppNotInstalledDialog(deepLinkUri);
-    }
-  }
-
-  void _showAppNotInstalledDialog(Uri fallbackUri) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('E-Money App Not Found'),
-        content: const Text(
-          'The E-Money Wallet application is not installed on this device. '
-          'Please install the wallet application to continue with the App-to-App payment integration.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              // In production, direct to play store. In testing, show link details
-              showDialog(
-                context: context,
-                builder: (ctx) => AlertDialog(
-                  title: const Text('Deep Link Telemetry'),
-                  content: SelectableText('Deep Link Uri:\n$fallbackUri'),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.of(ctx).pop(),
-                      child: const Text('OK'),
-                    )
-                  ],
-                ),
-              );
-            },
-            child: const Text('View Deep Link Uri'),
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Global Merchant', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.teal,
-        actions: [
-          Stack(
-            alignment: Alignment.center,
-            children: [
-              IconButton(
-                icon: const Icon(Icons.shopping_cart, color: Colors.white),
-                onPressed: _openCheckoutSheet,
-              ),
-              if (_cart.isNotEmpty)
-                Positioned(
-                  right: 8,
-                  top: 8,
-                  child: Container(
-                    padding: const EdgeInsets.all(2),
-                    decoration: BoxDecoration(
-                      color: Colors.red,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    constraints: const BoxConstraints(
-                      minWidth: 16,
-                      minHeight: 16,
-                    ),
-                    child: Text(
-                      _cart.values.fold(0, (sum, val) => sum + val).toString(),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(width: 8),
-        ],
-      ),
-      body: ListView.builder(
-        padding: const EdgeInsets.all(16.0),
-        itemCount: _products.length,
-        itemBuilder: (context, index) {
-          final prod = _products[index];
-          return Card(
-            margin: const EdgeInsets.only(bottom: 16.0),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Row(
-                children: [
-                  Text(
-                    prod.imageUrl,
-                    style: const TextStyle(fontSize: 40),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          prod.name,
-                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          prod.description,
-                          style: TextStyle(fontSize: 13, color: Colors.grey[600]),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Rp ${currencyFormat(prod.price)}',
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.bold,
-                            color: Theme.of(context).primaryColor,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.add_shopping_cart, color: Colors.teal),
-                    onPressed: () => _addToCart(prod),
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
-      ),
-      floatingActionButton: _cart.isNotEmpty
-          ? FloatingActionButton.extended(
-              onPressed: _openCheckoutSheet,
-              backgroundColor: Colors.teal,
-              icon: const Icon(Icons.shopping_bag, color: Colors.white),
-              label: Text(
-                'Checkout (Rp ${currencyFormat(_cartTotal)})',
-                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-              ),
-            )
-          : null,
+    return MaterialApp(
+      title: AppStrings.appName,
+      debugShowCheckedModeBanner: false,
+      theme: AppTheme.light,
+      navigatorKey: MyApp.navigatorKey,
+      initialRoute: AppRouter.login,
+      routes: {
+        ...AppRouter.routes,
+        '/transaction-history': (context) => const TransactionHistoryPage(),
+      },
     );
   }
 }
 
-// Tested with local Android Emulator and localhost loopbacks.
 
+class SplashPage extends StatefulWidget {
+  const SplashPage({super.key});
 
-// Tested with local Android Emulator and localhost loopbacks.
+  @override
+  State<SplashPage> createState() => _SplashPageState();
+}
 
+class _SplashPageState extends State<SplashPage> {
+  @override
+  void initState() {
+    super.initState();
+    _checkAuth();
+  }
 
-// Typo fixes.
+  Future<void> _checkAuth() async {
+    await Future.delayed(const Duration(seconds: 2)); // Animasi splash
+    if (!mounted) return;
 
+    final token = await SecureStorage.getToken();
+    final route = token != null ? AppRouter.dashboard : AppRouter.login;
+    Navigator.pushReplacementNamed(context, route);
+  }
+
+  @override
+  Widget build(BuildContext context) => const Scaffold(
+    body: Center(child: CircularProgressIndicator()),
+  );
+}
