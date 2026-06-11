@@ -1,0 +1,7 @@
+.env
+firebase_service_account.json
+app.exe
+*.exe
+.idea/
+.vscode/
+vendor/
