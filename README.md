@@ -16,3 +16,8 @@ This project integrates an **E-Commerce Merchant App** with an **E-Money Wallet 
 ## Running locally
 1. Run backend: cd backend && go run main.go
 2. Run apps: lutter run inside ecommerce_app and emoney_wallet.
+
+## Branches
+- main: Stable production builds
+- develop: Daily feature integrations
+- feature/*: Scoped features
