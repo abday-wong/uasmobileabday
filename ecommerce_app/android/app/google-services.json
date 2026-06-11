@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "467158476842",
+    "project_id": "gaming-7e0ec",
+    "storage_bucket": "gaming-7e0ec.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:467158476842:android:83ed65883304e5b9f07b53",
+        "android_client_info": {
+          "package_name": "com.example.uts_gaming_console"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCXMauIKOTHs71FS2FHKK90Z94b9VxR2b0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

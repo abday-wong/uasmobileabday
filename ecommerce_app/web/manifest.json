@@ -1,6 +1,6 @@
 {
-    "name": "ecommerce_app",
-    "short_name": "ecommerce_app",
+    "name": "uts_gaming_console",
+    "short_name": "uts_gaming_console",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
