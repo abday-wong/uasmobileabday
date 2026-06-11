@@ -5,8 +5,23 @@ import 'package:app_links/app_links.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 
-void main() {
+// Background messaging handler
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  debugPrint("Handling a background message: ${message.messageId}");
+}
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  try {
+    await Firebase.initializeApp();
+    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+    await FirebaseMessaging.instance.requestPermission();
+  } catch (e) {
+    debugPrint("Firebase initialization skipped (Mock Mode): $e");
+  }
   runApp(const EMoneyWalletApp());
 }
 
@@ -361,6 +376,7 @@ class _WalletMainScreenState extends State<WalletMainScreen> {
 
         // Fetch latest profile
         _fetchUserProfile();
+        _registerFCMTokenOnBackend();
 
         // Check if there was a pending transaction deep link waiting
         if (_pendingTrx != null) {
@@ -400,6 +416,26 @@ class _WalletMainScreenState extends State<WalletMainScreen> {
       }
     } catch (e) {
       debugPrint('Failed to refresh profile: $e');
+    }
+  }
+
+  Future<void> _registerFCMTokenOnBackend() async {
+    if (_jwtToken == null) return;
+    try {
+      String? token = await FirebaseMessaging.instance.getToken();
+      if (token != null) {
+        debugPrint("FCM Token: $token");
+        await http.put(
+          Uri.parse('$_backendUrl/auth/fcm-token'),
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $_jwtToken',
+          },
+          body: jsonEncode({'fcm_token': token}),
+        );
+      }
+    } catch (e) {
+      debugPrint("FCM Token registration skipped: $e");
     }
   }
 

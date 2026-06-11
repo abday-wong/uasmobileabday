@@ -4,8 +4,23 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:app_links/app_links.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 
-void main() {
+// Background messaging handler
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  debugPrint("Handling a background message: ${message.messageId}");
+}
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  try {
+    await Firebase.initializeApp();
+    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+    await FirebaseMessaging.instance.requestPermission();
+  } catch (e) {
+    debugPrint("Firebase initialization skipped (Mock Mode): $e");
+  }
   runApp(const ECommerceApp());
 }
 
@@ -88,6 +103,24 @@ class _ProductListScreenState extends State<ProductListScreen> {
   void initState() {
     super.initState();
     _initDeepLinking();
+    _initFirebaseMessaging();
+  }
+
+  void _initFirebaseMessaging() {
+    try {
+      FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+        debugPrint('Got an FCM message in the foreground!');
+        if (message.notification != null) {
+          _showPaymentResultDialog(
+            title: message.notification!.title ?? 'Transaction Alert',
+            message: message.notification!.body ?? '',
+            isSuccess: true,
+          );
+        }
+      });
+    } catch (e) {
+      debugPrint("FCM listener setup skipped: $e");
+    }
   }
 
   @override
