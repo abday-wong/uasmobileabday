@@ -7,6 +7,7 @@ import 'dart:convert';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 // Background messaging handler
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -213,7 +214,7 @@ class WalletMainScreen extends StatefulWidget {
 class _WalletMainScreenState extends State<WalletMainScreen> {
   // Config: Adjust this based on where your backend is running.
   // 10.0.2.2 is the alias to host loopback interface in Android Emulator.
-  final String _backendUrl = 'http://10.0.2.2:8081/v1';
+  final String _backendUrl = kIsWeb ? 'http://localhost:8081/v1' : 'http://10.0.2.2:8081/v1';
 
   String? _jwtToken;
   String? _userEmail;
