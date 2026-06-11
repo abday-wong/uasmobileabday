@@ -3,7 +3,9 @@ import 'package:app_links/app_links.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:uts_gaming_console/core/constants/app_strings.dart';
 import 'package:uts_gaming_console/core/routes/app_router.dart';
 import 'package:uts_gaming_console/core/services/secure_storage.dart';
@@ -22,15 +24,14 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
-  
   try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
     FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
     await FirebaseMessaging.instance.requestPermission();
   } catch (e) {
-    debugPrint("FCM initialization skipped (Mock/Error): $e");
+    debugPrint("Firebase/FCM initialization skipped (Mock/Error): $e");
   }
 
   runApp(
@@ -128,7 +129,12 @@ class _MyAppState extends State<MyApp> {
 
   void _handleDeepLink(Uri uri) {
     debugPrint('Received Deep Link: $uri');
-    if (uri.scheme == 'ecommerce' && uri.host == 'callback') {
+    bool isCallback = (uri.scheme == 'ecommerce' && uri.host == 'callback');
+    if (kIsWeb && uri.queryParameters.containsKey('status') && uri.queryParameters.containsKey('trx_id')) {
+      isCallback = true;
+    }
+
+    if (isCallback) {
       final status = uri.queryParameters['status'];
       final trxId = uri.queryParameters['trx_id'] ?? 'N/A';
       final amount = uri.queryParameters['amount'] ?? '0';
@@ -200,8 +206,9 @@ class _MyAppState extends State<MyApp> {
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
       navigatorKey: MyApp.navigatorKey,
-      initialRoute: AppRouter.login,
+      initialRoute: AppRouter.splash,
       routes: {
+        AppRouter.splash: (_) => const SplashPage(),
         ...AppRouter.routes,
         '/transaction-history': (context) => const TransactionHistoryPage(),
       },
@@ -225,16 +232,41 @@ class _SplashPageState extends State<SplashPage> {
   }
 
   Future<void> _checkAuth() async {
-    await Future.delayed(const Duration(seconds: 2)); // Animasi splash
+    if (!mounted) return;
+    // Restore sesi dari token tersimpan (penting untuk Web page refresh)
+    await context.read<AuthProvider>().tryRestoreSession();
     if (!mounted) return;
 
-    final token = await SecureStorage.getToken();
-    final route = token != null ? AppRouter.dashboard : AppRouter.login;
-    Navigator.pushReplacementNamed(context, route);
+    final authProvider = context.read<AuthProvider>();
+    if (authProvider.status == AuthStatus.authenticated) {
+      // Jika ada query params dari callback E-Money, langsung ke dashboard
+      if (kIsWeb) {
+        final uri = Uri.base;
+        if (uri.queryParameters.containsKey('status') &&
+            uri.queryParameters.containsKey('trx_id')) {
+          SchedulerBinding.instance.addPostFrameCallback((_) {
+            if (mounted) Navigator.pushReplacementNamed(context, AppRouter.dashboard);
+          });
+          return;
+        }
+      }
+      Navigator.pushReplacementNamed(context, AppRouter.dashboard);
+    } else {
+      Navigator.pushReplacementNamed(context, AppRouter.login);
+    }
   }
 
   @override
   Widget build(BuildContext context) => const Scaffold(
-    body: Center(child: CircularProgressIndicator()),
+    body: Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          CircularProgressIndicator(),
+          SizedBox(height: 16),
+          Text('Memuat...', style: TextStyle(color: Colors.grey)),
+        ],
+      ),
+    ),
   );
 }
