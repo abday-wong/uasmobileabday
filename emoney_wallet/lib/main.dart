@@ -269,7 +269,12 @@ class _WalletMainScreenState extends State<WalletMainScreen> {
 
   void _handleIncomingDeepLink(Uri uri) {
     debugPrint('Received Deep Link: $uri');
-    if (uri.scheme == 'emoney' && uri.host == 'pay') {
+    bool isPaymentLink = (uri.scheme == 'emoney' && uri.host == 'pay');
+    if (kIsWeb && uri.queryParameters.containsKey('amount') && uri.queryParameters.containsKey('recipient')) {
+      isPaymentLink = true;
+    }
+
+    if (isPaymentLink) {
       final amount = uri.queryParameters['amount'];
       final recipient = uri.queryParameters['recipient'];
       final trxId = uri.queryParameters['trx_id'];
@@ -782,9 +787,14 @@ class _WalletMainScreenState extends State<WalletMainScreen> {
     _fetchUserProfile();
 
     debugPrint('Launching Callback Link: $callbackUri');
-    if (await canLaunchUrl(callbackUri)) {
-      await launchUrl(callbackUri, mode: LaunchMode.externalApplication);
-    } else {
+    try {
+      if (kIsWeb || await canLaunchUrl(callbackUri)) {
+        await launchUrl(callbackUri, mode: LaunchMode.platformDefault);
+      } else {
+        _showCallbackErrorDialog(callbackUri);
+      }
+    } catch (e) {
+      debugPrint('Error launching callback: $e');
       _showCallbackErrorDialog(callbackUri);
     }
   }
@@ -807,9 +817,14 @@ class _WalletMainScreenState extends State<WalletMainScreen> {
     });
 
     debugPrint('Launching Failure Callback Link: $callbackUri');
-    if (await canLaunchUrl(callbackUri)) {
-      await launchUrl(callbackUri, mode: LaunchMode.externalApplication);
-    } else {
+    try {
+      if (kIsWeb || await canLaunchUrl(callbackUri)) {
+        await launchUrl(callbackUri, mode: LaunchMode.platformDefault);
+      } else {
+        _showCallbackErrorDialog(callbackUri);
+      }
+    } catch (e) {
+      debugPrint('Error launching failure callback: $e');
       _showCallbackErrorDialog(callbackUri);
     }
   }
