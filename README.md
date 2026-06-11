@@ -107,6 +107,27 @@ Disarankan menggunakan dua Android Emulator atau perangkat fisik yang berbeda:
    flutter run
    ```
 
+## 🌟 Fitur Baru & Pembaruan Terkini (UAS Update)
+
+Dalam kelanjutan pengembangan proyek UAS ini, beberapa fitur utama telah berhasil diimplementasikan:
+
+1. **Session Restore pada Web Refresh (E-Commerce)**
+   - Menambahkan mekanisme `tryRestoreSession` di `SplashPage` dan `AuthProvider` menggunakan penyimpanan token JWT yang aman (`SecureStorage`).
+   - Ketika aplikasi di-refresh di web browser, sistem secara otomatis membaca token tersebut dan menjaga pengguna tetap dalam keadaan terautentikasi (*stay logged in*) tanpa kembali ke halaman login.
+
+2. **Web-based Deep Link Callback Fallback (App-to-App Web Redirect)**
+   - Mendukung redireksi checkout ke E-Money Wallet berbasis web menggunakan pembukaan tab browser baru jika aplikasi e-commerce dijalankan di environment web.
+   - Pemrosesan query parameter callback secara aman (`status`, `trx_id`, `amount`, `recipient_email`) baik pada mobile/emulator maupun web browser.
+
+3. **Default Saldo Awal Rp100.000.000 (100 Juta Rupiah)**
+   - Saldo default awal untuk user baru diubah dari Rp5.000.000 menjadi **Rp100.000.000**.
+   - Dilakukan untuk mempermudah proses checkout produk-produk premium (seperti gaming console seharga puluhan juta) tanpa terhambat error *insufficient balance*.
+
+4. **Integrasi Firebase Cloud Messaging (FCM)**
+   - Pengiriman push notification otomatis secara real-time ketika transfer berhasil:
+     - Notifikasi **"Pembayaran Diterima"** ke aplikasi E-Commerce (Penerima).
+     - Notifikasi **"Transaksi Berhasil"** ke aplikasi E-Money Wallet (Pengirim).
+
 ---
 
 ## 📸 Antarmuka Aplikasi (Screenshots)
