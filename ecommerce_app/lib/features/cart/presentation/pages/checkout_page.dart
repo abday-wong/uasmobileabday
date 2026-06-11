@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:uts_gaming_console/core/constants/app_colors.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import '../providers/cart_provider.dart';
 import 'payment_success_page.dart';
 
@@ -29,6 +30,29 @@ class _CheckoutPageState extends State<CheckoutPage> {
       // Generate unique transaction ID
       final trxId = 'TX-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}';
       const merchantEmail = 'recipient@example.com';
+
+      if (kIsWeb) {
+        final webUri = Uri.parse(
+          'http://localhost:52130/?amount=$amount'
+          '&recipient=$merchantEmail'
+          '&trx_id=$trxId'
+          '&callback=${Uri.encodeComponent('http://localhost:55486/')}'
+        );
+        debugPrint('Launching E-Money Web Link: $webUri');
+        try {
+          await launchUrl(webUri, mode: LaunchMode.platformDefault);
+          setState(() {
+            _isProcessing = false;
+          });
+        } catch (e) {
+          setState(() {
+            _isProcessing = false;
+          });
+          debugPrint('Error launching web link: $e');
+        }
+        return;
+      }
+
       const callbackUrl = 'ecommerce://callback';
       
       final deepLinkUri = Uri.parse(

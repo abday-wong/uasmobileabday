@@ -4,6 +4,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:uts_gaming_console/core/constants/app_strings.dart';
 import 'package:uts_gaming_console/core/routes/app_router.dart';
 import 'package:uts_gaming_console/core/services/secure_storage.dart';
@@ -127,7 +128,12 @@ class _MyAppState extends State<MyApp> {
 
   void _handleDeepLink(Uri uri) {
     debugPrint('Received Deep Link: $uri');
-    if (uri.scheme == 'ecommerce' && uri.host == 'callback') {
+    bool isCallback = (uri.scheme == 'ecommerce' && uri.host == 'callback');
+    if (kIsWeb && uri.queryParameters.containsKey('status') && uri.queryParameters.containsKey('trx_id')) {
+      isCallback = true;
+    }
+
+    if (isCallback) {
       final status = uri.queryParameters['status'];
       final trxId = uri.queryParameters['trx_id'] ?? 'N/A';
       final amount = uri.queryParameters['amount'] ?? '0';
