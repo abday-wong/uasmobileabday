@@ -39,7 +39,7 @@ type User struct {
 	FCMToken    string    `json:"fcm_token"`
 	TOTPSecret  string    `json:"-"`
 	TOTPEnabled bool      `gorm:"default:false" json:"totp_enabled"`
-	Balance     int64     `gorm:"default:100000" json:"balance"` // Saldo awal Rp100.000
+	Balance     int64     `gorm:"default:100000000" json:"balance"` // Saldo awal Rp100.000.000
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
 }
@@ -538,7 +538,7 @@ func confirmOTP(c *gin.Context) {
 		// Create new user with starting balance
 		user = User{
 			Email:   emailVerified,
-			Balance: 100000, // Rp100.000
+			Balance: 100000000, // Rp100.000.000
 		}
 		if err := db.Create(&user).Error; err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create user session"})
